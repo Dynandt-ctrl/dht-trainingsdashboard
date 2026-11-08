@@ -11,61 +11,32 @@ const START = new Date(2026, 7, 31); // ma 31 aug 2026
 const DAY_NAMES = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
 const WEEK_TARGET = 6; // sessies per week
 
+// Winterschema: vaste 7-daagse cyclus (geen rustdag), herhaalt elke week.
+// Ma Legs zwaar · Di Push zwaar · Wo Pull zwaar · Do Push licht ·
+// Vr Voetbal · Za Legs licht · Zo Pull matig (+ optionele conditie)
+const FIETSEN = "Fietsen 15–20 min, rustig (zone 2)";
 const WEEK_TEMPLATES = [
   [
-    // Week 1: pull + hardlopen al gedaan op zo 30 aug
-    { kracht: "Push", cardio: null },
-    { kracht: "Pull", cardio: "Duurloop 25–30 min rustig" },
-    { kracht: "Arms & schouders", cardio: null },
-    { kracht: null, cardio: null },
-    { kracht: null, cardio: "VOETBAL — wedstrijd/training" },
-    { kracht: "Legs", cardio: "Korte intervallen 10 × 30 sec (15–17 km/u), 60–90 sec rust" },
-    { kracht: "Upper", cardio: "Herstelduurloop 20–25 min" },
-  ],
-  [
-    { kracht: "Push", cardio: "Interval 8 × 2 min hard, 75 sec rust, helling 1%" },
-    { kracht: "Pull", cardio: null },
-    { kracht: "Arms & schouders", cardio: "Duurloop 30–35 min" },
-    { kracht: null, cardio: null },
-    { kracht: null, cardio: "VOETBAL — wedstrijd/training" },
-    { kracht: "Legs", cardio: "Helling-intervallen 8 × 45 sec op 8–10%, 90 sec rust" },
-    { kracht: "Upper", cardio: "Herstelduurloop 25 min" },
-  ],
-  [
-    { kracht: "Push", cardio: "Interval 6 × 3 min hard, 90 sec rust, helling 1%" },
-    { kracht: "Pull", cardio: null },
-    { kracht: "Arms & schouders", cardio: "Helling-intervallen 8 × 45 sec, 90 sec rust" },
-    { kracht: null, cardio: null },
-    { kracht: null, cardio: "VOETBAL — wedstrijd/training" },
-    { kracht: "Legs", cardio: "Korte intervallen 8 × 30 sec, fris en snel" },
-    { kracht: "Upper", cardio: "Rustige duurloop 20 min" },
+    { kracht: "Legs zwaar", cardio: FIETSEN },
+    { kracht: "Push zwaar", cardio: FIETSEN },
+    { kracht: "Pull zwaar", cardio: FIETSEN },
+    { kracht: "Push licht", cardio: FIETSEN },
+    { kracht: null, cardio: "VOETBAL — wedstrijd/training (+ fietsen optioneel, als je fit genoeg bent)" },
+    { kracht: "Legs licht", cardio: FIETSEN },
+    { kracht: "Pull matig", cardio: FIETSEN },
   ],
 ];
 
 const DEFAULT_EXERCISES = {
-  Push: [
-    "Bench press", "Incline dumbbell press", "Shoulder press",
-    "Lateral raises", "Triceps pushdown", "Overhead extension",
-  ],
-  Pull: [
-    "Underhand lat pulldown", "Lat pulldown", "Barbell row", "Kabelrow (nauw)",
-    "Face pulls", "Incline dumbbell curls", "Hammer curls",
-  ],
-  Arms: [
-    "Shoulder press (dumbbell)", "Lateral raises", "Rear delt fly",
-    "EZ-bar curl", "Hammer curls", "Triceps pushdown", "Overhead extension",
-  ],
-  Legs: [
-    "Squat", "Leg press", "Romanian deadlift", "Leg curl",
-    "Leg extension", "Calf raises", "Hanging leg raises (core)",
-  ],
-  Upper: [
-    "Machine chest press", "Chest-supported row", "Lat pulldown",
-    "Lateral raises", "Rear delt fly", "Biceps curl",
-  ],
+  "Legs zwaar": ["Squat", "Romanian deadlift", "Bulgarian split squat", "Calf raises"],
+  "Push zwaar": ["Bench press", "Dumbbell shoulder press", "Incline dumbbell press", "Lateral raises", "Triceps pushdown"],
+  "Pull zwaar": ["Barbell row", "Lat pulldown", "Kabelrow (nauw)", "Face pulls", "Hammer curls"],
+  "Push licht": ["Push-ups", "Cable fly", "Dumbbell shoulder press", "Lateral raises", "Triceps pushdown"],
+  "Legs licht": ["Leg press", "Romanian deadlift", "Single-leg Romanian deadlift", "Leg extension", "Calf raises"],
+  "Pull matig": ["Kabelrow (nauw)", "Lat pulldown", "Single-arm dumbbell row", "Rear delt fly", "EZ-bar curl"],
   Cardio: [],
 };
-const TYPES = ["Push", "Pull", "Arms", "Legs", "Upper", "Cardio"];
+const TYPES = ["Legs zwaar", "Push zwaar", "Pull zwaar", "Push licht", "Legs licht", "Pull matig", "Cardio"];
 
 // Per oefening: doelspier, waarom, en een alternatief (wisselbaar)
 const EXERCISE_INFO = {
@@ -82,6 +53,7 @@ const EXERCISE_INFO = {
   "Skull crushers": { m: "Triceps (lange kop)", why: "Gestrekte armpositie belast de lange kop zwaarder dan pushdowns.", alt: "Triceps pushdown" },
   "Overhead extension": { m: "Triceps (lange kop)", why: "Boven je hoofd staat de lange kop op stretch — die mist bij pushdowns.", alt: "Cable overhead extension" },
   "Cable overhead extension": { m: "Triceps (lange kop)", why: "Zelfde stretch als met dumbbell, maar constante kabelspanning.", alt: "Overhead extension" },
+  "Cable fly": { m: "Borst (isolatie)", why: "Constante spanning over de hele borstbeweging — ideale afsluiter op je lichte drukdag, zonder de belasting van een zware pers.", alt: "Push-ups" },
   // Pull
   "Underhand lat pulldown": { m: "Onderste lats + biceps", why: "Onderhandse grip laat je ellebogen langs je lichaam trekken → onderste latvezels + extra biceps.", alt: "Chin-ups" },
   "Chin-ups": { m: "Onderste lats + biceps", why: "Zelfde beweging met je lichaamsgewicht — zwaarder en functioneler.", alt: "Underhand lat pulldown" },
@@ -95,6 +67,7 @@ const EXERCISE_INFO = {
   "Barbell curl": { m: "Biceps (beide koppen)", why: "Zwaarste curl-variant — pure laadbaarheid.", alt: "Incline dumbbell curls" },
   "Hammer curls": { m: "Brachialis + onderarm", why: "Neutrale grip pakt de spier ónder je biceps — dat geeft armdikte.", alt: "Cable hammer curls" },
   "Cable hammer curls": { m: "Brachialis + onderarm", why: "Met het touw houd je constante spanning over de hele beweging.", alt: "Hammer curls" },
+  "Single-arm dumbbell row": { m: "Bovenrug + lats (unilateraal)", why: "Werkt elke kant apart — vangt links-rechts verschillen op en geeft een extra stretch onderin dan een stang.", alt: "Chest-supported row" },
   // Arms
   "Shoulder press (dumbbell)": { m: "Voorste + zijkant schouder", why: "Tweede schoudermoment van de week, dumbbells voor gelijke belasting links/rechts.", alt: "Machine shoulder press" },
   "Machine shoulder press": { m: "Voorste + zijkant schouder", why: "Stabiel en veilig — fijn op een lichtere dag.", alt: "Shoulder press (dumbbell)" },
@@ -109,6 +82,8 @@ const EXERCISE_INFO = {
   "Nordic curls": { m: "Hamstrings", why: "Bewezen de beste oefening tegen hamstringblessures bij voetballers.", alt: "Leg curl" },
   "Leg extension": { m: "Quads (isolatie)", why: "Isolatie zonder systeemvermoeidheid — quads afmaken na het zware werk.", alt: "Bulgarian split squat" },
   "Bulgarian split squat": { m: "Quads + bilspieren (per been)", why: "Traint elk been apart — verschillen tussen links en rechts werk je hiermee weg.", alt: "Leg extension" },
+  "Hip thrust": { m: "Bilspieren", why: "Isoleert de bilspieren via heupextensie — complementair aan squat en RDL, en helpt bij afzet- en sprintkracht op het veld.", alt: "Romanian deadlift" },
+  "Single-leg Romanian deadlift": { m: "Hamstrings + bilspieren + balans", why: "Traint elk been apart op één standbeen — bouwt de balans en beenstabiliteit op die je als voetballer nodig hebt bij richtingsveranderingen en landingen, met minder impact dan plyometrie.", alt: "Romanian deadlift" },
   "Calf raises": { m: "Kuiten", why: "Sterke kuiten = betere afzet en minder enkelblessures.", alt: "Seated calf raises" },
   "Seated calf raises": { m: "Kuiten (soleus)", why: "Zittend pak je de diepe kuitspier die staand deels buiten schot blijft.", alt: "Calf raises" },
   "Hanging leg raises (core)": { m: "Onderste buikspieren", why: "Zware core-oefening — stabiliteit voor squats én duels op het veld.", alt: "Cable crunch" },
@@ -122,6 +97,7 @@ const EXERCISE_INFO = {
 };
 
 const STORAGE_KEY = "dht-training-v2";
+const COACH_STORAGE_KEY = "dht-coach-chat-v1";
 // Sessie van gisteren (zo 30 aug): pull + hardgelopen
 const SEED_LOGS = [
   {
@@ -153,6 +129,7 @@ const PRESCRIPTION = {
   "Skull crushers": { reps: "8–12", rest: 90 },
   "Overhead extension": { reps: "10–15", rest: 60 },
   "Cable overhead extension": { reps: "10–15", rest: 60 },
+  "Cable fly": { reps: "12–15", rest: 60 },
   "Underhand lat pulldown": { reps: "8–12", rest: 120 },
   "Chin-ups": { reps: "6–10", rest: 120 },
   "Lat pulldown": { reps: "8–12", rest: 120 },
@@ -168,6 +145,7 @@ const PRESCRIPTION = {
   "EZ-bar curl": { reps: "8–12", rest: 90 },
   "Hammer curls": { reps: "10–12", rest: 60 },
   "Cable hammer curls": { reps: "12–15", rest: 60 },
+  "Single-arm dumbbell row": { reps: "10–12 p/kant", rest: 90 },
   "Biceps curl": { reps: "12–15", rest: 60 },
   "Cable curl": { reps: "12–15", rest: 60 },
   "Squat": { reps: "5–8", rest: 180 },
@@ -178,6 +156,8 @@ const PRESCRIPTION = {
   "Nordic curls": { reps: "5–8", rest: 120 },
   "Leg extension": { reps: "12–15", rest: 60 },
   "Bulgarian split squat": { reps: "8–12 p/been", rest: 120 },
+  "Hip thrust": { reps: "8–12", rest: 90 },
+  "Single-leg Romanian deadlift": { reps: "8–10 p/been", rest: 120 },
   "Calf raises": { reps: "10–15", rest: 60 },
   "Seated calf raises": { reps: "12–20", rest: 60 },
   "Hanging leg raises (core)": { reps: "10–15", rest: 60 },
@@ -204,9 +184,25 @@ const planForDate = (date) => {
   const i = Math.floor((date - START) / 86400000);
   if (i < 0) return null;
   const week = Math.floor(i / 7);
-  const tpl = WEEK_TEMPLATES[Math.min(week, 2)][i % 7];
-  return { ...tpl, week: week + 1, repeated: week > 2 };
+  const tpl = WEEK_TEMPLATES[Math.min(week, WEEK_TEMPLATES.length - 1)][i % 7];
+  return { ...tpl, week: week + 1, repeated: false };
 };
+
+// Kcal/macro-cycling op trainingsbelasting — eiwit vast op 240g, koolhydraten
+// en vet schuiven mee. Volgorde Ma t/m Zo, zelfde volgorde als WEEK_TEMPLATES.
+// Gemiddelde bewust op ~3000 kcal/dag gehouden (op jouw verzoek) i.p.v. extra te
+// compenseren voor de dagelijkse fietssessie — dat zet het deficit op ~700 kcal/dag
+// (~0,65%/week), de bovenkant van wat onderzoek nog verantwoord noemt voor recomp.
+const NUTRITION_PLAN = [
+  { label: "Legs zwaar", kcal: 3300, protein: 240, carbs: 420, fat: 73 },
+  { label: "Push zwaar", kcal: 2950, protein: 240, carbs: 310, fat: 83 },
+  { label: "Pull zwaar", kcal: 2950, protein: 240, carbs: 310, fat: 83 },
+  { label: "Push licht", kcal: 2800, protein: 240, carbs: 260, fat: 89 },
+  { label: "Voetbal", kcal: 3300, protein: 240, carbs: 420, fat: 73 },
+  { label: "Legs licht", kcal: 2950, protein: 240, carbs: 310, fat: 83 },
+  { label: "Pull matig", kcal: 2800, protein: 240, carbs: 260, fat: 89 },
+];
+const nutritionForDate = (date) => NUTRITION_PLAN[(date.getDay() + 6) % 7];
 // standaard rusttijd per oefening (sec)
 const restFor = (exercise) => {
   if (PRESCRIPTION[exercise]) return PRESCRIPTION[exercise].rest;
@@ -234,6 +230,12 @@ export default function App() {
   const [now, setNow] = useState(Date.now());
   const timerDone = useRef(false);
 
+  const [coachMessages, setCoachMessages] = useState([]);
+  const [coachInput, setCoachInput] = useState("");
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [coachError, setCoachError] = useState("");
+  const coachEndRef = useRef(null);
+
   const today = new Date();
 
   /* ---------- storage ---------- */
@@ -260,6 +262,59 @@ export default function App() {
       setLoaded(true);
     })();
   }, []);
+
+  /* ---------- coach chat: historie laden + bewaren ---------- */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get(COACH_STORAGE_KEY);
+        if (res && res.value) {
+          const data = JSON.parse(res.value);
+          if (Array.isArray(data.messages)) setCoachMessages(data.messages);
+        }
+      } catch (e) { /* nog geen chatgeschiedenis */ }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (coachEndRef.current) coachEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [coachMessages, coachLoading]);
+
+  const sendCoachMessage = async () => {
+    const text = coachInput.trim();
+    if (!text || coachLoading) return;
+    const nextMessages = [...coachMessages, { role: "user", content: text }];
+    setCoachMessages(nextMessages);
+    setCoachInput("");
+    setCoachError("");
+    setCoachLoading(true);
+    try {
+      const resp = await fetch("/api/coach", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messages: nextMessages }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Er ging iets mis");
+      const updated = [...nextMessages, { role: "assistant", content: data.text || "(geen antwoord ontvangen)" }];
+      setCoachMessages(updated);
+      try {
+        await window.storage.set(COACH_STORAGE_KEY, JSON.stringify({ messages: updated }));
+      } catch (e) { /* prima, dan alleen lokaal zichtbaar deze sessie */ }
+    } catch (err) {
+      setCoachError(err.message || "Kon geen verbinding maken met de coach.");
+    } finally {
+      setCoachLoading(false);
+    }
+  };
+
+  const clearCoachChat = async () => {
+    setCoachMessages([]);
+    setCoachError("");
+    try {
+      await window.storage.set(COACH_STORAGE_KEY, JSON.stringify({ messages: [] }));
+    } catch (e) { /* prima */ }
+  };
 
   const persist = async (nextLogs, msg) => {
     setLogs(nextLogs);
@@ -469,6 +524,7 @@ export default function App() {
   }, [logs]);
 
   const todayPlan = planForDate(today);
+  const nutritionToday = nutritionForDate(today);
   const cardioDoneToday = logs.some((l) => l.date === iso(today) && (l.type === "Cardio" || l.cardioDesc));
 
   if (!loaded) {
@@ -523,9 +579,11 @@ export default function App() {
         {[
           ["vandaag", "Vandaag"],
           ["schema", "Schema"],
+          ["voeding", "Voeding"],
           ["log", "Log training"],
           ["logboek", "Logboek"],
           ["progressie", "Progressie"],
+          ["coach", "Coach"],
         ].map(([key, label]) => (
           <button key={key} className={"tab" + (tab === key ? " tab-on" : "")} onClick={() => setTab(key)}>
             {label}
@@ -548,8 +606,8 @@ export default function App() {
                 <div className="card">
                   <div className="card-eyebrow">Kracht</div>
                   <div className="card-main">{todayPlan.kracht}</div>
-                  {TYPES.includes(todayPlan.kracht.split(" ")[0]) && (
-                    <button className="btn" onClick={() => startLog(todayPlan.kracht.split(" ")[0])}>
+                  {TYPES.includes(todayPlan.kracht) && (
+                    <button className="btn" onClick={() => startLog(todayPlan.kracht)}>
                       Log deze training
                     </button>
                   )}
@@ -558,7 +616,7 @@ export default function App() {
               {todayPlan.cardio && (
                 <div className={"card" + (todayPlan.cardio.startsWith("VOETBAL") ? " card-match" : "")}>
                   <div className="card-eyebrow">
-                    {todayPlan.cardio.startsWith("VOETBAL") ? "Matchday" : "Cardio (loopband)"}
+                    {todayPlan.cardio.startsWith("VOETBAL") ? "Matchday" : "Cardio"}
                   </div>
                   <div className="card-main">{todayPlan.cardio}</div>
                   {cardioDoneToday ? (
@@ -585,9 +643,9 @@ export default function App() {
         <section>
           {WEEK_TEMPLATES.map((week, wi) => (
             <div key={wi} className="week-block">
-              <h2 className="sec-title">Week {wi + 1}</h2>
+              <h2 className="sec-title">Winterschema (herhaalt elke week)</h2>
               <table className="tbl">
-                <thead><tr><th>Dag</th><th>Kracht</th><th>Cardio (loopband)</th></tr></thead>
+                <thead><tr><th>Dag</th><th>Kracht</th><th>Cardio</th></tr></thead>
                 <tbody>
                   {week.map((d, di) => {
                     const date = new Date(START);
@@ -621,6 +679,59 @@ export default function App() {
               ))}
             </div>
           ))}
+        </section>
+      )}
+
+      {/* ---------------- VOEDING ---------------- */}
+      {tab === "voeding" && (
+        <section>
+          <h2 className="sec-title">Vandaag — {nutritionToday.label}</h2>
+          <div className="card">
+            <div className="card-eyebrow">Doel vandaag</div>
+            <div className="macro-grid">
+              <div className="macro-box"><span className="macro-num">{nutritionToday.kcal}</span><span className="macro-lbl">kcal</span></div>
+              <div className="macro-box"><span className="macro-num">{nutritionToday.protein}g</span><span className="macro-lbl">Eiwit</span></div>
+              <div className="macro-box"><span className="macro-num">{nutritionToday.carbs}g</span><span className="macro-lbl">Koolhydr.</span></div>
+              <div className="macro-box"><span className="macro-num">{nutritionToday.fat}g</span><span className="macro-lbl">Vet</span></div>
+            </div>
+          </div>
+
+          <h2 className="sec-title">Weekoverzicht</h2>
+          <table className="tbl">
+            <thead><tr><th>Dag</th><th>Training</th><th>Kcal</th><th>Eiwit</th><th>Koolhydr.</th><th>Vet</th></tr></thead>
+            <tbody>
+              {NUTRITION_PLAN.map((n, i) => {
+                const dayDate = new Date(monday);
+                dayDate.setDate(monday.getDate() + i);
+                const isToday = iso(dayDate) === iso(today);
+                return (
+                  <tr key={i} className={isToday ? "row-today" : ""}>
+                    <td className="td-day">{DAY_NAMES[dayDate.getDay()]}</td>
+                    <td>{n.label}</td>
+                    <td>{n.kcal}</td>
+                    <td>{n.protein}g</td>
+                    <td>{n.carbs}g</td>
+                    <td>{n.fat}g</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="muted">
+            Weekgemiddelde: ~{Math.round(NUTRITION_PLAN.reduce((s, n) => s + n.kcal, 0) / 7)} kcal/dag · Eiwit ligt
+            altijd vast op 240g, koolhydraten en vet schuiven mee met de trainingsbelasting van de dag.
+          </p>
+
+          <h2 className="sec-title">Extra's dit winterplan</h2>
+          <div className="card">
+            <ul className="extras-list">
+              <li><strong>Creatine</strong> — 5g per dag, elke dag (ook op voetbaldagen).</li>
+              <li><strong>Vitamine D</strong> — overweeg 25 mcg/dag, zeker in de winter.</li>
+              <li><strong>Deload</strong> — plan elke 6-8 weken een week met ~40% minder volume in.</li>
+              <li><strong>Stappen</strong> — streef naar 8.000-10.000 per dag.</li>
+              <li><strong>Fietsen</strong> — 15-20 min rustig (zone 2), elke dag na je training. Op voetbaldag optioneel, alleen als je fit genoeg bent. Je voeding is al aangepast op deze extra verbranding.</li>
+            </ul>
+          </div>
         </section>
       )}
 
@@ -926,6 +1037,62 @@ export default function App() {
         </section>
       )}
 
+      {/* ---------------- COACH ---------------- */}
+      {tab === "coach" && (
+        <section>
+          <div className="coach-head">
+            <h2 className="sec-title" style={{ margin: 0 }}>Coach</h2>
+            {coachMessages.length > 0 && (
+              <button className="mini mini-del" onClick={clearCoachChat}>Chat wissen</button>
+            )}
+          </div>
+
+          <div className="coach-box">
+            {coachMessages.length === 0 ? (
+              <p className="muted">
+                Stel hier een vraag over training, herstel, voeding of macro's — bijvoorbeeld
+                "Hoeveel eiwit heb ik nodig?" of "Waarom voel ik m'n borst niet na push day?".
+              </p>
+            ) : (
+              <div className="coach-msgs">
+                {coachMessages.map((m, i) => (
+                  <div key={i} className={`coach-msg coach-msg-${m.role}`}>
+                    <div className="coach-bubble">{m.content}</div>
+                  </div>
+                ))}
+                {coachLoading && (
+                  <div className="coach-msg coach-msg-assistant">
+                    <div className="coach-bubble coach-bubble-loading">…</div>
+                  </div>
+                )}
+                <div ref={coachEndRef} />
+              </div>
+            )}
+          </div>
+
+          {coachError && <div className="coach-error">{coachError}</div>}
+
+          <div className="coach-input-row">
+            <textarea
+              className="inp coach-input"
+              placeholder="Typ je vraag…"
+              value={coachInput}
+              onChange={(e) => setCoachInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendCoachMessage();
+                }
+              }}
+              rows={2}
+            />
+            <button className="btn" onClick={sendCoachMessage} disabled={coachLoading || !coachInput.trim()}>
+              {coachLoading ? "…" : "Stuur"}
+            </button>
+          </div>
+        </section>
+      )}
+
       {/* ---------------- RUSTTIMER (sticky) ---------------- */}
       {tab === "log" && draft && draft.type !== "Cardio" && (
         <div className="timerbar">
@@ -1030,6 +1197,27 @@ function Style() {
       .td-pr { font-weight: 700; }
       .row-today td { background: #eaf6ee; }
       .week-block { margin-bottom: 6px; }
+
+      .macro-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+      .macro-box { background: #f1f4f0; border-radius: 10px; padding: 10px 4px; text-align: center; }
+      .macro-num { display: block; font-family: 'Barlow Condensed'; font-weight: 800; font-size: 22px; line-height: 1.1; color: #1e8a4c; }
+      .macro-lbl { font-size: 11px; color: #5a6b5f; text-transform: uppercase; letter-spacing: .06em; }
+      .extras-list { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.7; }
+      .extras-list li { margin-bottom: 4px; }
+
+      .coach-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+      .coach-box { background: #fff; border: 1px solid #dfe6df; border-radius: 12px; padding: 12px; min-height: 160px; margin-bottom: 10px; }
+      .coach-msgs { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
+      .coach-msg { display: flex; }
+      .coach-msg-user { justify-content: flex-end; }
+      .coach-msg-assistant { justify-content: flex-start; }
+      .coach-bubble { max-width: 85%; border-radius: 12px; padding: 8px 12px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; }
+      .coach-msg-user .coach-bubble { background: #16211a; color: #fff; }
+      .coach-msg-assistant .coach-bubble { background: #eaf6ee; color: #16211a; border: 1px solid #bcd9c6; }
+      .coach-bubble-loading { color: #5a6b5f; font-style: italic; }
+      .coach-error { background: #fdeceb; border: 1px solid #f3c6c2; color: #a3362a; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 10px; }
+      .coach-input-row { display: flex; gap: 8px; align-items: flex-end; }
+      .coach-input { flex: 1; margin-bottom: 0; resize: none; font-family: inherit; }
 
       .type-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
       .type-btn { font-family: 'Barlow Condensed'; font-weight: 800; font-size: 20px; text-transform: uppercase;
